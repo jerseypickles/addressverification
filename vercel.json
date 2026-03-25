@@ -2,6 +2,11 @@
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "build/client",
   "framework": null,
+  "functions": {
+    "api/server.mjs": {
+      "runtime": "@vercel/node@3"
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/server" }
   ]
