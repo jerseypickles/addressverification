@@ -1,0 +1,2 @@
+- [Project Overview](project_overview.md) — Embedded Shopify app, Google Address Validation, Node.js/Remix, USA
+- [User Profile](user_profile.md) — Spanish-speaking dev, Shopify/Node.js
