@@ -2,7 +2,7 @@
 
 client_id = "b3fd4a938c8fa33a231ef3fc2e9a4925"
 name = "address-verification"
-application_url = "https://example.com"
+application_url = "https://addressverification-production.up.railway.app"
 embedded = true
 
 [build]
@@ -28,7 +28,7 @@ api_version = "2026-04"
 scopes = "write_metaobject_definitions,write_metaobjects,write_products,read_orders,write_orders"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://addressverification-production.up.railway.app/api/auth" ]
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
