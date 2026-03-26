@@ -45,9 +45,16 @@ export async function validateAddress(address) {
   }
 
   // Build formatted address from Google's response
+  // For city: try locality first, then sublocality_level_1, then neighborhood
+  const city = getComponent(googleAddress, "locality")
+    || getComponent(googleAddress, "sublocality_level_1")
+    || getComponent(googleAddress, "sublocality")
+    || getComponent(googleAddress, "neighborhood")
+    || getComponent(googleAddress, "postal_town");
+
   const validatedAddress = {
     address1: formatAddressLine(googleAddress),
-    city: getComponent(googleAddress, "locality"),
+    city: city,
     province: getComponent(googleAddress, "administrative_area_level_1"),
     zip: getComponent(googleAddress, "postal_code"),
     country: "US",
