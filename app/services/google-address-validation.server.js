@@ -35,17 +35,7 @@ export async function validateAddress(address) {
   const verdict = result.verdict;
   const googleAddress = result.address;
 
-  // Determine status based on verdict
-  let status = "valid";
-  if (verdict.hasUnconfirmedComponents || verdict.hasReplacedComponents) {
-    status = "needs_review";
-  }
-  if (verdict.inputGranularity === "OTHER" || !verdict.addressComplete) {
-    status = "invalid";
-  }
-
   // Build formatted address from Google's response
-  // For city: try locality first, then sublocality_level_1, then neighborhood
   const city = getComponent(googleAddress, "locality")
     || getComponent(googleAddress, "sublocality_level_1")
     || getComponent(googleAddress, "sublocality")
@@ -60,12 +50,86 @@ export async function validateAddress(address) {
     country: "US",
   };
 
+  // Determine status based on verdict
+  let status = "valid";
+  if (verdict.hasUnconfirmedComponents || verdict.hasReplacedComponents) {
+    status = "needs_review";
+  }
+  if (verdict.inputGranularity === "OTHER" || !verdict.addressComplete) {
+    status = "invalid";
+  }
+
+  // Check if changes are minor (only capitalization, abbreviations, formatting)
+  const isMinorChange = status === "needs_review" && isMinorDifference(address, validatedAddress);
+  if (isMinorChange) {
+    status = "auto_corrected";
+  }
+
   return {
     status,
     validatedAddress,
     verdict,
     formattedAddress: googleAddress.formattedAddress,
+    isMinorChange,
   };
+}
+
+// Detect if differences are only minor (capitalization, abbreviations, whitespace)
+function isMinorDifference(original, validated) {
+  const normalize = (s) => (s || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\./g, "")
+    .replace(/,/g, "");
+
+  // Common abbreviation mappings
+  const abbreviations = {
+    street: "st", avenue: "ave", boulevard: "blvd", drive: "dr",
+    lane: "ln", road: "rd", court: "ct", place: "pl", circle: "cir",
+    terrace: "ter", highway: "hwy", parkway: "pkwy", square: "sq",
+    north: "n", south: "s", east: "e", west: "w",
+    northeast: "ne", northwest: "nw", southeast: "se", southwest: "sw",
+    apartment: "apt", suite: "ste", building: "bldg", floor: "fl",
+  };
+
+  const expandAbbreviations = (s) => {
+    let result = normalize(s);
+    for (const [full, abbr] of Object.entries(abbreviations)) {
+      result = result.replace(new RegExp(`\\b${full}\\b`, "g"), abbr);
+      result = result.replace(new RegExp(`\\b${abbr}\\b`, "g"), abbr);
+    }
+    return result;
+  };
+
+  const addr1Match = expandAbbreviations(original.address1) === expandAbbreviations(validated.address1);
+  const cityMatch = normalize(original.city) === normalize(validated.city);
+  const zipMatch = normalize(original.zip) === normalize(validated.zip).split("-")[0];
+
+  // Province: compare normalized (e.g., "New York" vs "NY", "Florida" vs "FL")
+  const stateAbbreviations = {
+    alabama: "al", alaska: "ak", arizona: "az", arkansas: "ar", california: "ca",
+    colorado: "co", connecticut: "ct", delaware: "de", florida: "fl", georgia: "ga",
+    hawaii: "hi", idaho: "id", illinois: "il", indiana: "in", iowa: "ia",
+    kansas: "ks", kentucky: "ky", louisiana: "la", maine: "me", maryland: "md",
+    massachusetts: "ma", michigan: "mi", minnesota: "mn", mississippi: "ms",
+    missouri: "mo", montana: "mt", nebraska: "ne", nevada: "nv",
+    "new hampshire": "nh", "new jersey": "nj", "new mexico": "nm", "new york": "ny",
+    "north carolina": "nc", "north dakota": "nd", ohio: "oh", oklahoma: "ok",
+    oregon: "or", pennsylvania: "pa", "rhode island": "ri", "south carolina": "sc",
+    "south dakota": "sd", tennessee: "tn", texas: "tx", utah: "ut", vermont: "vt",
+    virginia: "va", washington: "wa", "west virginia": "wv", wisconsin: "wi", wyoming: "wy",
+    "district of columbia": "dc",
+  };
+
+  const normalizeState = (s) => {
+    const n = normalize(s);
+    return stateAbbreviations[n] || n;
+  };
+
+  const provinceMatch = normalizeState(original.province) === normalizeState(validated.province);
+
+  return addr1Match && cityMatch && provinceMatch && zipMatch;
 }
 
 function getComponent(address, type) {

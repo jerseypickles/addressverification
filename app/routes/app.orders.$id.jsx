@@ -162,6 +162,7 @@ export const action = async ({ request, params }) => {
 
 const STATUS_CONFIG = {
   valid: { tone: "success", label: "Valid", color: "#008060", bg: "#f1f8f5" },
+  auto_corrected: { tone: "success", label: "Auto-Fixed", color: "#008060", bg: "#f1f8f5" },
   needs_review: { tone: "warning", label: "Needs Review", color: "#b98900", bg: "#fef8f0" },
   invalid: { tone: "critical", label: "Invalid", color: "#d72c0d", bg: "#fef6f6" },
   pending: { tone: "info", label: "Pending", color: "#2c6ecb", bg: "#f0f5ff" },

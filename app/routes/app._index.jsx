@@ -25,19 +25,21 @@ export const loader = async ({ request }) => {
 
   const total = stats.reduce((acc, s) => acc + s._count.status, 0);
   const valid = stats.find((s) => s.status === "valid")?._count.status || 0;
+  const autoCorrected = stats.find((s) => s.status === "auto_corrected")?._count.status || 0;
   const needsReview = stats.find((s) => s.status === "needs_review")?._count.status || 0;
   const invalid = stats.find((s) => s.status === "invalid")?._count.status || 0;
   const pending = stats.find((s) => s.status === "pending")?._count.status || 0;
 
   return {
     validations,
-    stats: { total, valid, needsReview, invalid, pending },
+    stats: { total, valid, autoCorrected, needsReview, invalid, pending },
     currentFilter: statusFilter,
   };
 };
 
 const STATUS_CONFIG = {
   valid: { tone: "success", label: "Valid", icon: "✓" },
+  auto_corrected: { tone: "success", label: "Auto-Fixed", icon: "⚡" },
   needs_review: { tone: "warning", label: "Needs Review", icon: "!" },
   invalid: { tone: "critical", label: "Invalid", icon: "✕" },
   pending: { tone: "info", label: "Pending", icon: "…" },
@@ -48,6 +50,7 @@ const FILTER_LABELS = {
   needs_review: "Needs Review",
   invalid: "Invalid",
   valid: "Valid",
+  auto_corrected: "Auto-Fixed",
   pending: "Pending",
 };
 
@@ -166,10 +169,51 @@ export default function Index() {
   const { validations, stats, currentFilter } = useLoaderData();
   const navigate = useNavigate();
 
-  const successRate = stats.total > 0 ? Math.round((stats.valid / stats.total) * 100) : 0;
+  const successRate = stats.total > 0 ? Math.round(((stats.valid + stats.autoCorrected) / stats.total) * 100) : 0;
 
   return (
     <s-page heading="Address Verification">
+      {/* Alert Banner */}
+      {(stats.needsReview > 0 || stats.invalid > 0) && (
+        <s-section>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "14px 18px",
+            background: stats.invalid > 0 ? "#fef6f6" : "#fef8f0",
+            border: `1px solid ${stats.invalid > 0 ? "#e0a5a5" : "#e5b87b"}`,
+            borderRadius: "10px",
+          }}>
+            <span style={{ fontSize: "20px" }}>{stats.invalid > 0 ? "🚨" : "⚠️"}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "#202223" }}>
+                {stats.needsReview + stats.invalid} order{stats.needsReview + stats.invalid !== 1 ? "s" : ""} need{stats.needsReview + stats.invalid === 1 ? "s" : ""} attention
+              </div>
+              <div style={{ fontSize: "12px", color: "#6d7175", marginTop: "2px" }}>
+                {stats.invalid > 0 && `${stats.invalid} invalid`}
+                {stats.invalid > 0 && stats.needsReview > 0 && " · "}
+                {stats.needsReview > 0 && `${stats.needsReview} need review`}
+              </div>
+            </div>
+            <div
+              onClick={() => navigate("/app?status=needs_review")}
+              style={{
+                padding: "6px 14px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#ffffff",
+                background: stats.invalid > 0 ? "#d72c0d" : "#b98900",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              Review Now
+            </div>
+          </div>
+        </s-section>
+      )}
+
       <s-section>
         {/* Stats Cards */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px", flexWrap: "wrap" }}>
@@ -186,6 +230,13 @@ export default function Index() {
             tone="success"
             active={currentFilter === "valid"}
             onClick={() => navigate("/app?status=valid")}
+          />
+          <StatCard
+            label="Auto-Fixed"
+            value={stats.autoCorrected}
+            tone="success"
+            active={currentFilter === "auto_corrected"}
+            onClick={() => navigate("/app?status=auto_corrected")}
           />
           <StatCard
             label="Needs Review"
@@ -241,7 +292,7 @@ export default function Index() {
         }}>
           {Object.entries(FILTER_LABELS).map(([key, label]) => {
             const isActive = currentFilter === key;
-            const count = key === "all" ? stats.total : key === "needs_review" ? stats.needsReview : stats[key] || 0;
+            const count = key === "all" ? stats.total : key === "needs_review" ? stats.needsReview : key === "auto_corrected" ? stats.autoCorrected : stats[key] || 0;
             return (
               <div
                 key={key}
